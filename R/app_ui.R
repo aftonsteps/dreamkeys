@@ -10,7 +10,10 @@ app_ui <- function(request) {
     golem_add_external_resources(),
     # List the first level UI elements here 
     fluidPage(
-      h1("dreamkeys")
+      mod_keyboard_picker_ui("keyboard_picker"),
+      HTML(paste0("<div>Keyboard created with",
+                  "<a href = 'https://github.com/sharlagelfand/ggkeyboard'>",
+                  " ggkeyboard</a> by Sharla Gelfand!"))
     )
   )
 }
