@@ -20,6 +20,12 @@ mod_keyboard_picker_ui <- function(id){
                                                                       "magic",
                                                                       "<build your own>")),
                                               uiOutput(outputId = ns("pal_builder")),
+                                              selectInput(inputId = ns("key_type"),
+                                                          label = "Layout",
+                                                          choices = c("tkl",
+                                                                      "full",
+                                                                      "sixty percent"),
+                                                          selected = "tkl"),
                                               numericInput(inputId = ns("font_size"),
                                                            label = "Font Size",
                                                            value = 3,
@@ -112,36 +118,29 @@ mod_keyboard_picker_server <- function(input, output, session){
     }
   })
   
+  keyboard_type <- reactive({
+    return(gsub(pattern = " ", replacement = "_", x = input$key_type))
+  })
+  
   mushroom <- magick::image_read("inst/app/www/mushroom_key.jpg")
   
   output$keyboard <- renderPlot({
     req(input$pal_picker)
     req(input$font_size)
     req(pal_val())
-    
-    ## TODO fix join warning
-    ## TODO include keyboard type
-    ## TODO figure out how to lock a magick image to the coordinates of a 
-    ## resizeable plot
+    req(keyboard_type())
     
     pal <- input$pal_picker
     font_size <- input$font_size
     val_pal <- pal_val()
+    keyboard_type <- keyboard_type()
     
     k <- 
-      ggkeyboard(palette = val_pal,
+      ggkeyboard(keyboard = get(keyboard_type),
+                 palette = val_pal,
                  font_size = font_size)
     
-    print(k$coordinates$limits)
-    
-    g <- 
-      cowplot::ggdraw() +
-      cowplot::draw_plot(k) +
-      cowplot::draw_image(mushroom,
-                          x = 0.08,
-                          y = 0.47,
-                          width = 0.05,
-                          height = 0.5)
+    g <- add_keycap(k, "Esc", mushroom)
     
     return(g)
   })
