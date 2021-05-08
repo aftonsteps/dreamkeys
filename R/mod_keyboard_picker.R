@@ -31,7 +31,16 @@ mod_keyboard_picker_ui <- function(id){
                                                            value = 3,
                                                            min = 1,
                                                            max = 3,
-                                                           step = 0.1)),
+                                                           step = 0.1),
+                                              HTML("<hr/>"),
+                                              h4("~ Keycap Upload ~"),
+                                              uiOutput(ns("keycap_choice")),
+                                              uiOutput(ns("image_upload")),
+                                              actionButton(inputId = ns("add_keycap"),
+                                                           label = "Add Keycap"),
+                                              actionButton(inputId = ns("remove_keycaps"),
+                                                           label = "Remove All")
+                                              ),
                   mainPanel = mainPanel(plotOutput(outputId = ns("keyboard")))
     )
   )
@@ -119,36 +128,76 @@ mod_keyboard_picker_server <- function(input, output, session){
   })
   
   keyboard_type <- reactive({
-    return(gsub(pattern = " ", replacement = "_", x = input$key_type))
+    key_name <- gsub(pattern = " ", replacement = "_", x = input$key_type)
+    layout <- POSSIBLE_LAYOUTS[[key_name]]
+    
+    return(layout)
   })
   
-  mushroom <- magick::image_read("inst/app/www/mushroom_key.jpg")
+  output$keycap_choice <- renderUI({
+    req(keyboard_type())
+    
+    keyboard_type = keyboard_type()
+    
+    keycap_choice <- selectInput(inputId = ns("keycap_choice"),
+                                  label = "Key",
+                                  choices = keyboard_type$key)
+    
+    return(keycap_choice)
+  })
+  
+  output$image_upload <- renderUI({
+    req(!is.null(input$add_keycap))
+    fileInput(inputId = ns("image_upload"),
+              label = "Keycap Image",
+              placeholder = "image.png")
+  })
+  
+  images <- reactiveVal(list())
+  
+  observeEvent(c(input$add_keycap), {
+    image <- input$image_upload
+    
+    if (is.null(image)) { return(NULL) }
+    
+    image <- magick::image_read(image$datapath)
+    images(c(images(), list(image)))
+  })
+  
+  keycap_choices <- reactiveVal(value = c())
+  
+  observeEvent(c(input$add_keycap), {
+    keycap <- input$keycap_choice
+    keycap_choices(c(keycap_choices(), keycap))
+  })
+  
+  observeEvent(c(input$remove_keycaps), {
+    images(list())
+    keycap_choices(c())
+  })
   
   output$keyboard <- renderPlot({
     req(input$pal_picker)
     req(input$font_size)
     req(pal_val())
     req(keyboard_type())
-    
+
     pal <- input$pal_picker
     font_size <- input$font_size
     val_pal <- pal_val()
     keyboard_type <- keyboard_type()
+    images <- images()
+    keycap_choices <- keycap_choices()
     
-    k <- 
-      ggkeyboard(keyboard = get(keyboard_type),
+    g <-
+      ggkeyboard(keyboard = keyboard_type,
                  palette = val_pal,
                  font_size = font_size)
     
-    g <- add_keycap(k, "Esc", mushroom)
+    if (length(images) > 0 && length(keycap_choices) > 0) {
+      g <- add_keycap(g, keycap_choices, images)
+    }
     
     return(g)
   })
 }
-    
-## To be copied in the UI
-# mod_keyboard_picker_ui("keyboard_picker_ui_1")
-    
-## To be copied in the server
-# callModule(mod_keyboard_picker_server, "keyboard_picker_ui_1")
- 
